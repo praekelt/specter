@@ -1,5 +1,4 @@
 from twisted.trial import unittest
-from twisted.internet import defer
 
 from specter import service, client
 

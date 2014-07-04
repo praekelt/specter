@@ -1,14 +1,9 @@
 # -*- coding: utf-8 -*-
-from twisted.application import internet, service
-from twisted.web import server, resource, client
-from twisted.internet import defer, reactor, threads, utils, task
-from zope import interface
+from twisted.web import server, resource
+from twisted.internet import defer, reactor, task
 
 import json
-import yaml
-import time
 import cgi
-import random
 import hmac
 import hashlib
 import base64
