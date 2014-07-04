@@ -9,7 +9,7 @@ from twisted.internet import ssl
 
 from zope.interface import implements
 
-import specter
+from specter import service
 
 
 class Options(usage.Options):
@@ -28,7 +28,7 @@ class SpecterServiceMaker(object):
         
         return internet.SSLServer(
             int(options['port']),
-            server.Site(specter.SiteRoot(config)),
+            server.Site(service.SiteRoot(config)),
             ssl.DefaultOpenSSLContextFactory(
                 config['ssl-key'],
                 config['ssl-cert']

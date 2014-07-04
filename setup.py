@@ -11,7 +11,7 @@ setup(
     version=version.VERSION,
     url='http://github.com/praekelt/specter',
     license='MIT',
-    description="A generic cluster orchestration agent",
+    description="A generic server agent",
     long_description=open('README.rst', 'r').read(),
     author='Colin Alston',
     author_email='colin.alston@praekelt.com',
