@@ -20,7 +20,7 @@ class SiteRoot(resource.Resource):
     addSlash = True
 
     def __init__(self, config):
-        self.config = yaml.load(open(config))
+        self.config = config
 
         self.agent = agent.Agent(self.config)
 
@@ -36,14 +36,30 @@ class SiteRoot(resource.Resource):
         request.finish()
 
     def jsonRequest(self, call, request, data=None):
+        if data:
+            m = 'post_'
+        else:
+            m = 'get_'
+
+        method = m + '_'.join(call)
+
         try:
-            if data:
-                m = '_'.join(call)
-                return getattr(self.agent, 'post_'+m)(request, data)
+            if method in self.agent.methods:
+                if data:
+                    return getattr(self.agent, method)(request, data)
+                else:
+                    return getattr(self.agent, method)(request)
             else:
-                m = '_'.join(call)
-                return getattr(self.agent, 'get_'+m)(request)
-        except AttributeError:
+                for i in range(1, len(call)):
+                    method = m + '_'.join(call[:-1*i])
+                    if method in self.agent.methods:
+                        args = call[-1*i:]
+                        if data:
+                            return getattr(self.agent, method)(request, args, data)
+                        else:
+                            return getattr(self.agent, method)(request, args)
+
+        except Exception, e:
             return {"error": "Invalid call %s" % m}
 
     def getHeader(self, request, header, default=None):
@@ -54,10 +70,8 @@ class SiteRoot(resource.Resource):
             return default
 
     def getSecret(self, auth):
-        # Just some test secret
-        secrets = {'ahh3io45123hrqabf': '412YUDASdaqw123'}
-
-        return secrets[auth]
+        if auth == self.config['authcode']:
+            return self.config['secret']
 
     def checkSignature(self, request, data=None):
         auth = self.getHeader(request, 'authorization', None)

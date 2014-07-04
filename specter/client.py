@@ -82,7 +82,9 @@ class SpecterClient(object):
 
         defer.returnValue(json.loads(body))
 
-    def getRequest(self, path):
+    def getRequest(self, path, *a):
+        if a:
+            path = path + '/' + '/'.join([str(i) for i in a])
         sig = self.createSignature(path)
 
         headers = {
@@ -92,7 +94,7 @@ class SpecterClient(object):
 
         return self.httpsRequest(path, headers=headers)
 
-    def postRequest(self, path, data):
+    def postRequest(self, path, data, *a):
         sig = self.createSignature(path, data)
 
         headers = {
@@ -107,11 +109,11 @@ class SpecterClient(object):
 
         if method[:4] == 'get_':
             path = '/'.join(method[4:].split('_'))
-            return lambda: self.getRequest(path)
+            return lambda *a: self.getRequest(path, *a)
 
         elif method[:5] == 'post_':
             path = '/'.join(method[5:].split('_'))
-            return lambda data: self.postRequest(path, data)
+            return lambda data, *a: self.postRequest(path, data, *a)
 
         else:
             raise AttributeError
