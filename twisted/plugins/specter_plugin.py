@@ -1,4 +1,4 @@
-from zope.interface import implements
+import yaml
 
 from twisted.python import usage
 from twisted.plugin import IPlugin
@@ -7,6 +7,8 @@ from twisted.application import internet
 from twisted.web import server
 from twisted.internet import ssl
 
+from zope.interface import implements
+
 import specter
 
 
@@ -14,8 +16,6 @@ class Options(usage.Options):
     optParameters = [
         ["port", "p", 2400, "The port to listen on"],
         ["config", "c", "specter.yml", "Config file"],
-        ["key", None, "specter.key", "SSL key file"],
-        ["cert", None, "specter.crt", "SSL certificate file"]
     ]
 
 class SpecterServiceMaker(object):
@@ -24,12 +24,14 @@ class SpecterServiceMaker(object):
     description = "Distributex - A simple mutex lock service"
     options = Options
     def makeService(self, options):
+        config = yaml.load(open(options['config']))
+        
         return internet.SSLServer(
             int(options['port']),
-            server.Site(specter.SiteRoot(options['config'])),
+            server.Site(specter.SiteRoot(config)),
             ssl.DefaultOpenSSLContextFactory(
-                options['key'],
-                options['cert']
+                config['ssl-key'],
+                config['ssl-cert']
             )
         )
 
