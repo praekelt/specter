@@ -12,8 +12,14 @@ import random
 import hmac
 import hashlib
 import base64
+import socket
 
-from specter import version, agent
+try:
+    from urllib.parse import urlparse
+except:
+    from urlparse import urlparse
+
+from specter import version, agent, client
 
 class SiteRoot(resource.Resource):
     isLeaf = True
@@ -23,11 +29,44 @@ class SiteRoot(resource.Resource):
         self.config = config
 
         self.agent = agent.Agent(self.config)
+        self.client = client.SpecterClient(
+            'localhost', config['authcode'], config['secret'])
 
-        reactor.callWhenRunning(self.setup)
+        if config.get('webhook'):
+            reactor.callWhenRunning(self.setup)
+
+    @defer.inlineCallbacks
+    def updateWebhook(self):
+        """
+        Updates the webhook, called by LoopingCall
+        """
+        url = self.config['webhook']
+        path = urlparse(url).path
+
+        data = json.dumps({
+            'specter': version.VERSION,
+            'hostname': socket.gethostbyaddr(socket.gethostname())[0]
+        })
+        
+        try:
+            request = yield self.client.httpsRequest(
+                url,
+                headers=self.client.signHeaders(path.lstrip('/'), data),
+                method='POST',
+                data=data
+            )
+            print "Updated webhook: %s" % url
+        except Exception, e:
+            print "Webhook failed: %s" % e
+
+        defer.returnValue(None)
 
     def setup(self):
-        pass
+        self.update = task.LoopingCall(self.updateWebhook)
+
+        self.update.start(
+            int(self.config.get('update_time', 300))
+        )
 
     def completeCall(self, response, request):
         # Render the json response from call
