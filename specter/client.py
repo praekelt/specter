@@ -12,7 +12,7 @@ from StringIO import StringIO
 from zope.interface import implements
 
 from twisted.web.iweb import IBodyProducer
-from twisted.web.client import Agent, readBody
+from twisted.web.client import Agent
 from twisted.internet import reactor, defer, protocol
 from twisted.internet.ssl import ClientContextFactory
 from twisted.web.http_headers import Headers

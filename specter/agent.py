@@ -163,7 +163,7 @@ class Agent(object):
         log.msg('All start requested from %s' % (request.getClientIP()))
 
         out, code = yield self.runShell(
-            'supervisorctl update; supervisorctl start all; /etc/init.d/nginx stop; start cron'
+            'supervisorctl update; supervisorctl start all; /etc/init.d/nginx start; start cron'
         )
 
         defer.returnValue({'stdout': out})

@@ -21,7 +21,7 @@ class Options(usage.Options):
 class SpecterServiceMaker(object):
     implements(IServiceMaker, IPlugin)
     tapname = "specter"
-    description = "Distributex - A simple mutex lock service"
+    description = "A simple server agent"
     options = Options
     def makeService(self, options):
         config = yaml.load(open(options['config']))
