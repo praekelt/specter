@@ -61,11 +61,12 @@ class StringProducer(object):
         pass
 
 class SpecterClient(object):
-    def __init__(self, host, auth, key, port=2400):
+    def __init__(self, host, auth, key, port=2400, async=True):
         self.host = host
         self.port = port
         self.auth = auth
         self.key = key
+        self.async = async
 
     def createSignature(self, path, data=None):
         if data:

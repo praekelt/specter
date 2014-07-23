@@ -65,6 +65,7 @@ class SiteRoot(resource.Resource):
 
     def completeCall(self, response, request):
         # Render the json response from call
+        print request.path, repr(response)
         response = json.dumps(response)
         request.write(response)
         request.finish()
@@ -120,14 +121,18 @@ class SiteRoot(resource.Resource):
                 hashlib.sha1(data).hexdigest()
             )
 
-        mysig = hmac.new(
-            key = self.getSecret(auth),
-            msg = '\n'.join(sign),
-            digestmod = hashlib.sha1
-        ).digest()
+        key = self.getSecret(auth)
 
-        return base64.b64encode(mysig) == sig
+        if key:
+            mysig = hmac.new(
+                key=key,
+                msg='\n'.join(sign),
+                digestmod=hashlib.sha1
+            ).digest()
 
+            return base64.b64encode(mysig) == sig
+        else:
+            return False
 
     def render_GET(self, request):
         if not self.checkSignature(request):
