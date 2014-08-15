@@ -1,7 +1,9 @@
 import os
 
-from twisted.internet import defer, utils
+from twisted.internet import defer, utils, task, reactor
 from twisted.python import log
+
+import fcntl
 
 from specter import version
 
@@ -66,6 +68,24 @@ class Agent(object):
 
         defer.returnValue(fields)
 
+    def checkDpkgLock(self):
+        if not os.path.exists('/var/lib/dpkg/lock'):
+            return False
+
+        with open('/var/lib/dpkg/lock', 'w') as handle:
+            try:
+                fcntl.lockf(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return False
+            except IOError:
+                return True
+
+    @defer.inlineCallbacks
+    def waitDpkg(self):
+        if self.checkDpkgLock():
+            log.msg('Waiting for dpkg lock...')
+            while self.checkDpkgLock():
+                yield task.deferLater(reactor, 1, lambda: None)
+
     @defer.inlineCallbacks
     def post_install(self, request, data):
         """
@@ -80,6 +100,8 @@ class Agent(object):
             inst, errors, code = yield utils.getProcessOutputAndValue(
                 '/usr/bin/wget', args=('-nv', '-c', '-O', '/tmp/'+fn, url))
 
+            yield self.waitDpkg()
+
             if code!=0:
                 defer.returnValue({'error': inst+errors})
             else:
@@ -91,8 +113,10 @@ class Agent(object):
         else:
             log.msg('Package instalation %s requested from %s' % (data['package'], request.getClientIP()))
             # Update apt
+            yield self.waitDpkg()
             r = yield self.runShell('apt-get update')
             # Install with apt
+            yield self.waitDpkg()
             inst, errors, code = yield utils.getProcessOutputAndValue(
                 '/usr/bin/apt-get', args=('-q', '-y', '-o',
                 'DPkg::Options::=--force-confold', 'install', data['package']),
