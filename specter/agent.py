@@ -10,6 +10,12 @@ from specter import version
 class Agent(object):
     def __init__(self, config):
         self.config = config
+
+        if os.path.exists('/etc/redhat-release'):
+            self.os = 'Redhat'
+        else:
+            self.os = 'Ubuntu'
+
         self.methods = [m for m in dir(self) if m.startswith('post_') or m.startswith('get_')]
 
     @defer.inlineCallbacks
@@ -87,14 +93,15 @@ class Agent(object):
                 yield task.deferLater(reactor, 1, lambda: None)
 
     @defer.inlineCallbacks
-    def post_install(self, request, data):
+    def _ubuntu_install(self, request, data):
         """
         Install a package from a url or apt repo
         Accepts: {'package': str, ['url': str]}
         """
         if 'url' in data:
             url = data['url']
-            log.msg('Package instalation %s requested from %s' % (url, request.getClientIP()))
+            log.msg('Package instalation %s requested from %s' % (
+                url, request.getClientIP()))
             fn = url.split('/')[-1]
             # Download the file
             inst, errors, code = yield utils.getProcessOutputAndValue(
@@ -111,7 +118,8 @@ class Agent(object):
                 )
                 os.unlink('/tmp/'+fn)
         else:
-            log.msg('Package instalation %s requested from %s' % (data['package'], request.getClientIP()))
+            log.msg('Package instalation %s requested from %s' % (
+                data['package'], request.getClientIP()))
             # Update apt
             yield self.waitDpkg()
             r = yield self.runShell('apt-get update')
@@ -128,6 +136,53 @@ class Agent(object):
             'stderr': errors,
             'code': code
         })
+
+    @defer.inlineCallbacks
+    def _rhel_install(self, request, data):
+        """
+        Install a package from a url or rpm repo
+        Accepts: {'package': str, ['url': str]}
+        """
+        if 'url' in data:
+            url = data['url']
+            log.msg('Package instalation %s requested from %s' % (
+                url, request.getClientIP()))
+            fn = url.split('/')[-1]
+            # Download the file
+            inst, errors, code = yield utils.getProcessOutputAndValue(
+                '/usr/bin/wget', args=('-nv', '-c', '-O', '/tmp/'+fn, url))
+
+            if code!=0:
+                defer.returnValue({'error': inst+errors})
+            else:
+                # Install with gdebi (needs a full shell)
+                inst, errors, code = yield utils.getProcessOutputAndValue(
+                    '/usr/bin/yum', args=(
+                        '--nogpgcheck', '-q', 'install', '/tmp/'+fn),
+                    env=os.environ
+                )
+                os.unlink('/tmp/'+fn)
+        else:
+            log.msg('Package instalation %s requested from %s' % (
+                data['package'], request.getClientIP()))
+            # Update apt
+            inst, errors, code = yield utils.getProcessOutputAndValue(
+                '/usr/bin/yum', args=(
+                    '-q', '--nogpgcheck', 'install', data['package']),
+                env=os.environ
+            )
+
+        defer.returnValue({
+            'stdout': inst,
+            'stderr': errors,
+            'code': code
+        })
+
+    def post_install(self, request, data):
+        if self.os == 'Ubuntu':
+            return self._ubuntu_install(request, data)
+        else:
+            return self._rhel_install(request, data)
 
     @defer.inlineCallbacks
     def get_supervisor_stop(self, request, args):
